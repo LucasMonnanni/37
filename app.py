@@ -1,27 +1,25 @@
 import os, flask
+from flask_pymongo import PyMongo
 # from flask_socketio import SocketIO, emit
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import ValidationError, DataRequired
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user
 
 app = flask.Flask(__name__)
 app.config['SECRET_KEY'] = 'vivaperoncarajo'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 # socketio = SocketIO(app)
-
-db = SQLAlchemy(app)
-
 login = LoginManager(app)
+db = PyMongo(app, "mongodb://localhost:27017/tresette").db
+
 
 class RegisterForm(FlaskForm):
     username = StringField('Usuario', validators=[DataRequired()])
     password = PasswordField('Contraseña', validators=[DataRequired()])
     submit = SubmitField('Mandale cumbia')
     def validate_username(self, username):
-        user = User.query.filter_by(username=username.data).first()
+        user = db.users.find_one({'username':username.data})
         if user is not None:
             raise ValidationError('Te primerearon')
 
@@ -30,17 +28,6 @@ class LoginForm(FlaskForm):
     password = PasswordField('Contraseña', validators=[DataRequired()])
     remember_me = BooleanField('Acordate')
     submit = SubmitField('Mandale cumbia')
-
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), index=True, unique=True)
-    password_hash = db.Column(db.String(128))
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
 
 # players = []
 # full = False
@@ -59,8 +46,8 @@ def login():
         return redirect(url_for('main'))
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user is None or not user.check_password(form.password.data):
+        user = db.users.find_one({'username': form.username.data})
+        if user is None or not check_password_hash(user['password_hash'], form.password.data):
             flash('Si estás registrado, flasheaste, si no, registrate')
             return redirect(url_for('login'))
         login_user(user, remember=form.remember_me.data)
@@ -79,11 +66,9 @@ def register():
         return redirect(url_for('index'))
     form = RegisterForm()
     if form.validate_on_submit():
-        user = User(username=form.username.data)
-        user.set_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
-        return redirect(url_for('login'))
+        user = {'username': form.username.data, 'password_hash': generate_password_hash(form.password.data)}
+        db.users.insert_one(user)
+        return flask.redirect(url_for('login'))
     return flask.render_template('register.html', form=form)
 
 @app.route('/juego')
