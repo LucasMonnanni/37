@@ -1,5 +1,6 @@
 import os, flask
-from flask_pymongo import PyMongo
+from pymongo import MongoClient
+from umongo import Instance, Document, fields, validate
 # from flask_socketio import SocketIO, emit
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
@@ -11,8 +12,8 @@ app = flask.Flask(__name__)
 app.config['SECRET_KEY'] = 'vivaperoncarajo'
 # socketio = SocketIO(app)
 login = LoginManager(app)
-db = PyMongo(app, "mongodb://localhost:27017/tresette").db
-
+db = MongoClient().tresette
+instance = Instance(db)
 
 class RegisterForm(FlaskForm):
     username = StringField('Usuario', validators=[DataRequired()])
@@ -29,6 +30,13 @@ class LoginForm(FlaskForm):
     remember_me = BooleanField('Acordate')
     submit = SubmitField('Mandale cumbia')
 
+@instance.register
+class User(UserMixin, Document):
+    username = fields.StrField(required=True, attribute='_id')
+    password_hash = fields.StrField(required=True)
+    def get_id(self):
+        return self.username
+
 # players = []
 # full = False
 # mazo = []
@@ -37,46 +45,51 @@ class LoginForm(FlaskForm):
 #         mazo.append(str(i+1)+'k')
 
 @login.user_loader
-def load_user(id):
-    return User.query.get(int(id))
+def load_user(username):
+    return User.find_one({'username': username})
 
 @app.route("/", methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('main'))
+        return flask.redirect(flask.url_for('main'))
     form = LoginForm()
     if form.validate_on_submit():
-        user = db.users.find_one({'username': form.username.data})
+        user = User.find_one({'username': form.username.data})
         if user is None or not check_password_hash(user['password_hash'], form.password.data):
-            flash('Si estás registrado, flasheaste, si no, registrate')
-            return redirect(url_for('login'))
+            flask.flash('Si estás registrado, flasheaste, si no, registrate')
+            return flask.redirect(flask.url_for('login'))
         login_user(user, remember=form.remember_me.data)
-        return redirect(url_for('main'))
+        return flask.redirect(flask.url_for('main'))
     return flask.render_template('login.html', form=form)
 
 @app.route("/logout")
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return flask.redirect(flask.url_for('login'))
 
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(flask.url_for('main'))
     form = RegisterForm()
     if form.validate_on_submit():
-        user = {'username': form.username.data, 'password_hash': generate_password_hash(form.password.data)}
-        db.users.insert_one(user)
-        return flask.redirect(url_for('login'))
+        if User.find_one({'username':form.username.data}) is not None:
+            flask.flash('Te primerearon el nombre')
+            return flask.render_template('register.html', form=form)
+        user = User()
+        user.username = form.username.data
+        user.password_hash = generate_password_hash(form.password.data)
+        user.commit()
+        return flask.redirect(flask.url_for('login'))
     return flask.render_template('register.html', form=form)
 
 @app.route('/juego')
 def main():
     if current_user.is_anonymous:
-        return redirect(url_for('login'))
+        return flask.redirect(flask.url_for('login'))
     else:
-        return "Adentro!"
+        return "<h3>Adentro! </h3> <br> <a href=\"/logout\">Salir</a>"
 
 
 # @socketio.on('connect')
