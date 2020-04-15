@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block head %}
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.11/handlebars.min.js"></script>
+    <!-- <script type="text/javascript" src="{{url_for('static', filename='js/main.js')}}"></script> -->
+    <script id="waitlist" type="text/x-handlebars-template">
+    <h3>Jugadores esperando:</h3>
+    <ul>
+    {% raw -%}
+        {{#each players}}
+            <li>{{this}}</li>
+        {{/each}}
+    {%- endraw %}
+    </ul>
+    <input type="button" id="logout_button">
+    </script>
+    <script id='game_full' type="text/x-handlebars-template">
+        <h3>El juego está lleno</h3>
+    </script>
+    <script id='game' type="text/x-handlebars-template">
+        <h3>Tu mano:</h3>
+        <ul>
+            {% raw -%}
+            {{#each hand}}
+                <li>{{this[0]}} de {{this[1]}}</li>
+            {{/each}}
+            {%- endraw %}
+        </ul>
+    </script>
+    <script type="text/javascript">
+        const templateWait = Handlebars.compile(document.querySelector('#waitlist').innerHTML);
+        const templateFull = Handlebars.compile(document.querySelector('#game_full').innerHTML);
+        const templateGame = Handlebars.compile(document.querySelector('#game').innerHTML);
+        var players = null;
+        var hand;
+        document.addEventListener('DOMContentLoaded', () => {
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+            socket.on('players_update', data => {
+                players = data.players;
+                const content = templateWait({'players':data.players});
+                document.querySelector('#body').innerHTML = content;
+                document.querySelector('#logout_button').onclick = () => {
+                    const game_id = data.id;
+                    socket.emit('player_left', {'game_id':game_id});
+                };
+            });
+            socket.on('game_full',() => {
+                const content = templateFull();
+                document.querySelector('#body').innerHTML = content;
+            });
+            socket.on('game_starts', data =>    {
+                players = data.players;
+                // socket.emit('player_ready', {'player':current_user.username});
+                hand = data.hands['{{current_user.username}}'];
+                const content = templateGame({'hand':hand});
+                document.querySelector('#body').innerHTML = content;
+            });
+        });
+    </script>
+{% endblock %}
+{% block cuerpo%}
+    <div id='body'>
+    </div>
+{% endblock %}
