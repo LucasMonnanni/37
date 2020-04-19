@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Test</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.11/handlebars.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/phaser@3.15.1/dist/phaser-arcade-physics.min.js"></script>
+        <script type="text/javascript">
+            const config =  {
+                height: 720,
+                width: 1280,
+                backgroundColor: 0xE0E0E0,
+                scene:  {
+                    preload, create
+                }
+            };
+
+            function preload()  {
+                this.load.image('deck', 'https://upload.wikimedia.org/wikipedia/commons/e/e0/Baraja_espa%C3%B1ola_completa.png');
+            };
+
+        </script>
+    </head>
+    <body>
+        <div id='game_id'>
+
+        </div>
+
+    </body>
+</html>

@@ -35,6 +35,7 @@
         var hand;
         document.addEventListener('DOMContentLoaded', () => {
             var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+            socket.emit('player_in', { player: {{current_user.username}} })
             socket.on('players_update', data => {
                 players = data.players;
                 const content = templateWait({'players':data.players});

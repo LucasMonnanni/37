@@ -40,45 +40,66 @@ class User(UserMixin, Document):
 @instance.register
 class Game(Document):
     id = fields.ObjectIdField()
-    players = fields.ListField(fields.StrField())
-    hands = fields.DictField()
-    winner = fields.StrField()
+    teams = fields.DictField({ 'teamA': {'player1': {'username': fields.StrField(), 'hand': fields.ListField(fields.ListField(fields.StrField()))}, 'player2': {'username': fields.StrField(), 'hand': fields.ListField(fields.ListField(fields.StrField()))}, 'full': fields.BooleanField(), 'score': fields.IntegerField(), 'winner': BooleanField()}, 'teamB': {'player1': {'username': fields.StrField(), 'hand': fields.ListField(fields.ListField(fields.StrField()))}, 'player2': {'username': fields.StrField(), 'hand': fields.ListField(fields.ListField(fields.StrField()))}, 'full': fields.BooleanField(), 'score': fields.IntegerField(), 'winner': BooleanField()})
+    full = fields.BoolField(default=False)
     start = fields.DateTimeField()
     end = fields.DateTimeField()
-    full = fields.BoolField(default=False)
-    def add_player(self, player):
-        if player in open_players:
-            pass
+    def get_players(self):
+        players = []
+        for t in ['teamA','teamB']:
+            for p in ['player1', 'player2']:
+                players.append(self.teams[t][p]['username'])
+        return players
+
+    def add_player(self, username, team):
+        if username in self.get_players():
+            find_player(self, username)
         else:
-            open_players.append(player)
-            self.players = open_players
-            self.hands[player]=[]
-        if len(self.players) == n_players:
+            if self.teams[team]['player1']['username'] == Null:
+                self.teams[team]['player1']['username'] = username
+                return {'team': team, 'player': 'player1'}
+            else:
+                self.teams[team]['player2']['username'] = username
+                return {'team': team, 'player': 'player2'}
+                self.teams[team]['full'] = True
+                if self.teams['teamA']['full'] and self['teams']['teamB']['full']:
+                    self['full'] = True
+        if len(self.get_players()) == 4:
             self.full = True
         else:
             self.full = False
-    def del_player(self, player):
-        self.players.remove(player)
-        self.full = False
+
+    def find_player(self, username):
+        if username in self.get_players():
+            for team in ['teamA','teamB']:
+                for player in ['player1', 'player2']:
+                    if self.teams[team][player]['username'] == username:
+                        return {'team': team, 'player': player}
+
+    def deal(self):
+        open_deck = deck
+        for t in ['teamA','teamB']:
+            for p in ['player1', 'player2']:
+                for i in range(10):
+                    card = random.choice(open_deck)
+                    open_deck.remove(card)
+                    self.teams[t][p]['hand'].append(card)
+
 
 @login.user_loader
 def load_user(username):
     return User.find_one({'username': username})
 
 @app.before_first_request
-def before_first_request_func():
-    global n_players
-    n_players = 2
-    global open_players
-    open_players = []
+def before_first_request_func(): 
     global open_game
     open_game = Game()
-    open_game.players = open_players
+    open_game.commit()
     global deck
     deck = []
     for i in range(10):
         for p in ['basto', 'copa', 'espada', 'oro']:
-            deck.append((i,p))
+            deck.append([str(i) , p])
     print('Before')
 
 def assign_game(player):
@@ -89,6 +110,9 @@ def assign_game(player):
         open_game.commit()
         return open_game
 
+@app.route("/test")
+def gametest():
+    return flask.render_template('gametest.html')
 
 @app.route("/", methods=['GET', 'POST'])
 def login():
@@ -100,7 +124,7 @@ def login():
         if user is None or not check_password_hash(user['password_hash'], form.password.data):
             flask.flash('Si estás registrado, flasheaste, si no, registrate')
             return flask.redirect(flask.url_for('login'))
-        login_user(user, remember=form.remember_me.data)
+        login_user(user, remember= False)
         return flask.redirect(flask.url_for('main'))
     return flask.render_template('login.html', form=form)
 
@@ -133,24 +157,19 @@ def main():
     else:
         return flask.render_template('main.html')
 
-@socketio.on('connect')
-def connect():
-    if current_user.username in open_players:
+@socketio.on('player_in')
+def connect(data):
+    if data.player in open_players:
         pass
     else:
-        game = assign_game(current_user.username)
+        game = assign_game(data.player)
         if game == None:
             emit('game_full')
         else:
             emit('players_update', game.dump(), broadcast=True)
             socketio.sleep(0)
             if game.full:
-                open_deck = deck
-                for player in open_players:
-                    for i in range(10):
-                        card = random.choice(open_deck)
-                        open_deck.remove(card)
-                        game.hands[player].append(card)
+                game.deal()
                         game.commit()
                 emit('game_starts', game.dump(), broadcast=True)
 
