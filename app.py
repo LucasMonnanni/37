@@ -1,4 +1,4 @@
-import os, flask, random
+import os, flask, random, datetime
 from pymongo import MongoClient
 from umongo import Instance, Document, fields, validate
 from flask_socketio import SocketIO, emit
@@ -40,10 +40,18 @@ class User(UserMixin, Document):
 @instance.register
 class Game(Document):
     id = fields.ObjectIdField()
-    teams = fields.DictField({ 'teamA': {'player1': {'username': fields.StrField(), 'hand': fields.ListField(fields.ListField(fields.StrField()))}, 'player2': {'username': fields.StrField(), 'hand': fields.ListField(fields.ListField(fields.StrField()))}, 'full': fields.BooleanField(), 'score': fields.IntegerField(), 'winner': BooleanField()}, 'teamB': {'player1': {'username': fields.StrField(), 'hand': fields.ListField(fields.ListField(fields.StrField()))}, 'player2': {'username': fields.StrField(), 'hand': fields.ListField(fields.ListField(fields.StrField()))}, 'full': fields.BooleanField(), 'score': fields.IntegerField(), 'winner': BooleanField()})
+    teams = fields.DictField(default=\
+    { 'teamA': {'player1': {'username': None, 'hand': []}, \
+                'player2': {'username': None, 'hand': []}, \
+                'full': False, 'score': 0, 'winner': False}, \
+      'teamA': {'player1': {'username': None, 'hand': []}, \
+                'player2': {'username': None, 'hand': []}, \
+                'full': False, 'score': 0, 'winner': False}})
     full = fields.BoolField(default=False)
     start = fields.DateTimeField()
     end = fields.DateTimeField()
+    players = property(get_players)
+
     def get_players(self):
         players = []
         for t in ['teamA','teamB']:
@@ -51,30 +59,38 @@ class Game(Document):
                 players.append(self.teams[t][p]['username'])
         return players
 
+
+
     def add_player(self, username, team):
         if username in self.get_players():
             find_player(self, username)
         else:
-            if self.teams[team]['player1']['username'] == Null:
-                self.teams[team]['player1']['username'] = username
-                return {'team': team, 'player': 'player1'}
+            if self.full:
+                return None
             else:
-                self.teams[team]['player2']['username'] = username
-                return {'team': team, 'player': 'player2'}
-                self.teams[team]['full'] = True
-                if self.teams['teamA']['full'] and self['teams']['teamB']['full']:
-                    self['full'] = True
-        if len(self.get_players()) == 4:
-            self.full = True
-        else:
-            self.full = False
+                if self.teams[team]['player1']['username'] == None:
+                    self.teams[team]['player1']['username'] = username
+                    return {'team': team, 'player': 'player1'}
+                else:
+                    self.teams[team]['player2']['username'] = username
+                    return {'team': team, 'player': 'player2'}
+                    self.teams[team]['full'] = True
+                    if self.teams['teamA']['full'] and self['teams']['teamB']['full']:
+                        self['full'] = True
+
+    def del_player(self, team, player):
+        if player == 'player1':
+            self.teams[team][player]['username'] = self.teams[team]['player2']['username']
+            self.teams[team]['full'] = False
+        self.teams[team]['player2']['username'] = None
 
     def find_player(self, username):
-        if username in self.get_players():
-            for team in ['teamA','teamB']:
+        if username in self.players:
+            for team in ['teamA', 'teamB']:
                 for player in ['player1', 'player2']:
                     if self.teams[team][player]['username'] == username:
                         return {'team': team, 'player': player}
+                        break
 
     def deal(self):
         open_deck = deck
@@ -83,32 +99,24 @@ class Game(Document):
                 for i in range(10):
                     card = random.choice(open_deck)
                     open_deck.remove(card)
-                    self.teams[t][p]['hand'].append(card)
-
+                    self.teams[t][p]['hand'].append(card))
 
 @login.user_loader
 def load_user(username):
     return User.find_one({'username': username})
 
 @app.before_first_request
-def before_first_request_func(): 
+def before_first_request_func():
     global open_game
     open_game = Game()
     open_game.commit()
     global deck
     deck = []
-    for i in range(10):
+    for n in range(10):
         for p in ['basto', 'copa', 'espada', 'oro']:
-            deck.append([str(i) , p])
+            deck.append([n+1 , p])
     print('Before')
 
-def assign_game(player):
-    if open_game.full:
-        return None
-    else:
-        open_game.add_player(player)
-        open_game.commit()
-        return open_game
 
 @app.route("/test")
 def gametest():
@@ -157,24 +165,32 @@ def main():
     else:
         return flask.render_template('main.html')
 
-@socketio.on('player_in')
-def connect(data):
-    if data.player in open_players:
-        pass
+@socketio.on('connect')
+def connect():
+    player_data = open_game.find_player(current_user.username)
+    if player_data != None:
+        emit('player_data', player_data)
+        socketio.sleep(0)
+    emit('players_update', open_game.dump())
+
+@socketio.on('player_enter')
+def player_enter(data):
+    player_data = open_game.add_player(current_user.username, data.team)
+    open_game.commit()
+    if data == None:
+        emit('game_full')
     else:
-        game = assign_game(data.player)
-        if game == None:
-            emit('game_full')
+        emit('player_data', player_data)
+        socketio.sleep(0)
+        if open_game.full:
+            open_game.deal()
+            open_game.commit()
+            emit('game_starts', open_game.dump(), broadcast=True)
         else:
-            emit('players_update', game.dump(), broadcast=True)
-            socketio.sleep(0)
-            if game.full:
-                game.deal()
-                        game.commit()
-                emit('game_starts', game.dump(), broadcast=True)
+            emit('players_update', open_game.dump(), broadcast=True)
 
 @socketio.on('player_left')
-def player_left(data):
-    game = Game.find_one({'id':data.game_id})
-    game.del_player(current_user.username)
-    emit('players_update', game.dump(), broadcast=True)
+def player_left(player_data):
+    open_game.del_player(player_data.team, player_data.player)
+    open_game.commit()
+    emit('players_update', open_game.dump(), broadcast=True)

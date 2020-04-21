@@ -4,16 +4,28 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.11/handlebars.min.js"></script>
     <!-- <script type="text/javascript" src="{{url_for('static', filename='js/main.js')}}"></script> -->
     <script id="waitlist" type="text/x-handlebars-template">
-    <h3>Jugadores esperando:</h3>
-    <ul>
-    {% raw -%}
-        {{#each players}}
-            <li>{{this}}</li>
-        {{/each}}
-    {%- endraw %}
-    </ul>
-    <input type="button" id="logout_button">
-    </script>
+    <h3>Jugadores:</h3>
+    <div id="teamA">
+        <h4>Equipo A:</h4>
+        <ul>
+        {% raw -%}
+            {{#each teamAPlayers}}
+                <li>{{this}}</li>
+            {{/each}}
+        {%- endraw %}
+        </ul>
+    </div>
+    <div id="teamB">
+        <h4>Equipo B:</h4>
+        <ul>
+        {% raw -%}
+            {{#each teamBPlayers}}
+                <li>{{this}}</li>
+            {{/each}}
+        {%- endraw %}
+        </ul>
+    </div>
+   </script>
     <script id='game_full' type="text/x-handlebars-template">
         <h3>El juego está lleno</h3>
     </script>
@@ -22,39 +34,70 @@
         <ul>
             {% raw -%}
             {{#each hand}}
-                <li>{{this[0]}} de {{this[1]}}</li>
+                <li id='card{{@index}}'>{{this[0]}} de {{this[1]}}</li>
             {{/each}}
             {%- endraw %}
+        </ul>
+        <ul id="cards_played">
+
         </ul>
     </script>
     <script type="text/javascript">
         const templateWait = Handlebars.compile(document.querySelector('#waitlist').innerHTML);
         const templateFull = Handlebars.compile(document.querySelector('#game_full').innerHTML);
         const templateGame = Handlebars.compile(document.querySelector('#game').innerHTML);
-        var players = null;
+        var inGame = false;
+        var playerData;
         var hand;
         document.addEventListener('DOMContentLoaded', () => {
             var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-            socket.emit('player_in', { player: {{current_user.username}} })
             socket.on('players_update', data => {
-                players = data.players;
-                const content = templateWait({'players':data.players});
+                teamAPlayers = [data.teams.teamA.player1.username, data.temas.teamA.player2.username];
+                teamBPlayers = [data.teams.teamB.player1.username, data.temas.teamB.player2.username];
+                const content = templateWait({teamAPlayers, teamBPlayers});
                 document.querySelector('#body').innerHTML = content;
-                document.querySelector('#logout_button').onclick = () => {
-                    const game_id = data.id;
-                    socket.emit('player_left', {'game_id':game_id});
-                };
+                if (inGame) {
+                    const buttonOut = document.createElement("button");
+                    buttonOut.innerHTML = 'Salir';
+                    buttonOut.onclick = () => {
+                        socket.emit('player_left', playerData );
+                    };
+                    document.querySelector('#teamB').appendChild(buttonOut);
+                } else {
+                    if (!(data.teams.teamA.full))  {
+                        const buttonA = document.createElement("button");
+                        buttonA.innerHTML = 'Entrar';
+                        buttonA.onclick = () => {
+                            socket.emit('player_enter', {team:'teamA'});
+                        }
+                        document.querySelector('#teamA').appendChild(buttonA);
+                    };
+                    if (!(data.teams.teamB.full))  {
+                        const buttonB = document.createElement("button");
+                        buttonB.innerHTML = 'Entrar';
+                        buttonB.onclick = () => {
+                            socket.emit('player_enter', {team:'teamB'});
+                        };
+                        document.querySelector('#teamB').appendChild(buttonB);
+                    };
+                }
             });
+
+            socket.on('player_data', data =>    {
+                inGame = true;
+                playerData = data;
+            });
+
             socket.on('game_full',() => {
                 const content = templateFull();
                 document.querySelector('#body').innerHTML = content;
             });
+
             socket.on('game_starts', data =>    {
-                players = data.players;
-                // socket.emit('player_ready', {'player':current_user.username});
-                hand = data.hands['{{current_user.username}}'];
+                hand = data.team[playerData.team][playerData.player].hand
                 const content = templateGame({'hand':hand});
                 document.querySelector('#body').innerHTML = content;
+
             });
         });
     </script>
