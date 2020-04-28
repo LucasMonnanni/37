@@ -1,4 +1,4 @@
-import os, flask, random, datetime
+import os, flask, random, datetime, math
 from pymongo import MongoClient
 from umongo import Instance, Document, fields, validate
 from flask_socketio import SocketIO, emit
@@ -48,10 +48,11 @@ class Game(Document):
       'teamB': {'player1': {'username': None, 'hand': []}, \
                 'player2': {'username': None, 'hand': []}, \
                 'full': False, 'score': 0, 'winner': False}})
-    current_player = fields.DictField(default={'team': None, 'player': None, 'n': None})
+    current_player = fields.DictField(default={'team': None, 'player': None, 'username':None, 'n': None})
     full = fields.BoolField(default=False)
     start = fields.DateTimeField()
     end = fields.DateTimeField()
+    current_round = fields.IntegerField(default=1)
 
 
     def get_players(self):
@@ -107,17 +108,29 @@ class Game(Document):
         teams = self.teams
         for t in ['teamA','teamB']:
             for p in ['player1', 'player2']:
-                h = []
+                hand = []
                 for i in range(10):
                     card = random.choice(open_deck)
                     open_deck.remove(card)
-                    h.append(card)
-                h.sort(key=lambda c: order.index(c[0]))
-                h.sort(key=lambda c: c[1])
-                hand = [[i]+c for i,c in enumerate(h)]
+                    hand.append(card)
+                hand.sort(key=lambda c: order.index(c[0]))
+                hand.sort(key=lambda c: c[1])
                 teams[t][p]['hand'] = hand
         self.teams = teams
         self.commit()
+
+    def next_player(self):
+        next = {}
+        l = ['player1', 'player2']
+        if self.current_player['team'] == 'teamA':
+            next['team'] = 'teamB'
+            next['player'] = self.current_player['player']
+        else:
+            next['team'] = 'teamA'
+            next['player'] = l[l.index(self.current_player['player'])-1]
+        next['username'] = self.teams[next['team']][next['player']]['username']
+        next['n'] = self.current_player['n']+1
+        self.current_player = next
 
 @login.user_loader
 def load_user(username):
@@ -129,9 +142,11 @@ def before_first_request_func():
     order = ['3', '2', '1', '10', '9', '8', '7', '6', '5', '4']
     global value
     value = {'1':3, '2':1, '3':1, '10':1, '9':1, '8':1, '7':0, '6':0, '5':0, '4':0}
-    global open_game
-    open_game = Game()
-    open_game.commit()
+    global game
+    game = Game()
+    game.commit()
+    global open_round
+    open_round = []
     global deck
     deck = []
     for n in range(10):
@@ -139,7 +154,6 @@ def before_first_request_func():
             deck.append([str(n+1) , p])
     global current_player
     global players_order
-    players_order = [('teamB', 'player2'), ('teamB', 'player1'), ('teamA', 'player2'), ('teamA', 'player1')]
     print('Before')
 
 
@@ -192,38 +206,85 @@ def main():
 
 @socketio.on('connected')
 def connect():
-    player_data = open_game.find_player(current_user.username)
+    global game
+    if game.end != None:
+        game = Game()
+        game.commit()
+    player_data = game.find_player(current_user.username)
     if player_data != None:
         emit('player_data', player_data)
         socketio.sleep(0)
-    emit('players_update', open_game.dump())
+    if game.start != None:
+            emit('game_starts', game.dump())
+    else:
+            emit('players_update', game.dump())
 
 @socketio.on('player_enter')
 def player_enter(data):
-    player_data = open_game.add_player(current_user.username, data['team'])
+    player_data = game.add_player(current_user.username, data['team'])
     if player_data == None:
         emit('game_full')
     else:
         emit('player_data', player_data)
         socketio.sleep(0)
         print('Seguimos..')
-        if open_game.full:
-            open_game.deal()
+        if game.full:
+            game.deal()
             current_player = {'team': random.choice(['teamA', 'teamB']), 'player': random.choice(['player1', 'player2']), 'n': 1}
-            open_game.current_player = current_player
-            open_game.start = datetime.datetime.now()
-            open_game.commit()
-            emit('game_starts', open_game.dump(), broadcast=True)
+            current_player['username'] = game.teams[current_player['team']][current_player['player']]['username']
+            game.current_player = current_player
+            game.start = datetime.datetime.now()
+            game.commit()
+            emit('game_starts', game.dump(), broadcast=True)
         else:
-            emit('players_update', open_game.dump(), broadcast=True)
+            emit('players_update', game.dump(), broadcast=True)
 
 @socketio.on('player_left')
 def player_left(player_data):
-    open_game.del_player(player_data['team'], player_data['player'])
-    open_game.commit()
-    emit('players_update', open_game.dump(), broadcast=True)
+    game.del_player(player_data['team'], player_data['player'])
+    game.commit()
+    emit('players_update', game.dump(), broadcast=True)
 
 @socketio.on('play_card')
 def card_played(data):
-    card_data = {'username': open_game.teams[data['team']][data['player']]['username'], 'card': data['card']}
-    emit('card_played', data)
+    global open_round
+    global game
+    open_round.append([data['number'], data['suit'], data['team'], data['player']])
+    card_data = {'username': game.teams[data['team']][data['player']]['username'], 'card': [data['number'], data['suit']]}
+    if len(open_round) == 4:
+        champ = open_round[0]
+        score = value[champ[0]]
+        for i in range(3):
+            chall = open_round[i+1]
+            score += value[chall[0]]
+            if chall[1]==champ[1] and order.index(chall[0])<order.index(champ[0]):
+                champ = chall
+        open_round = []
+        teams = game.teams
+        teams[champ[2]]['score'] += score
+        game.teams = teams
+        game.commit()
+        if game.current_round == 10:
+            teams = game.teams
+            teams[champ[2]]['score'] += 3
+            if teams['teamA']['score']>teams['teamB']['score']:
+                teams['teamA']['winner'] = True
+                card_data['winner'] = {'team': 'teamA', 'players': [teams['teamA']['player1']['username'], teams['teamA']['player2']['username']], 'score':[math.floor(teams['teamA']['score']/3), math.floor(teams['teamB']['score']/3)]}
+            else:
+                teams['teamB']['winner'] = True
+                card_data['winner'] = {'team': 'teamB', 'players': [teams['teamB']['player1']['username'], teams['teamB']['player2']['username']], 'score':[math.floor(teams['teamB']['score']/3), math.floor(teams['teamA']['score']/3)]}
+            emit('game_over', card_data, broadcast=True)
+            game.teams = teams
+            game.end = datetime.datetime.now()
+            game.commit()
+        else:
+            game.current_round += 1
+            game.current_player = {'team': champ[2], 'player': champ[3], 'username': game.teams[champ[2]][champ[3]]['username'], 'n': 1}
+            game.commit()
+            card_data['current_player'] = game.current_player
+            emit('new_round', card_data, broadcast = True)
+    else:
+        game.next_player()
+        game.commit()
+        card_data['current_player'] = game.current_player
+        emit('card_played', card_data, broadcast = True)
