@@ -70,10 +70,6 @@ def main():
 
 @socketio.on('connected')
 def connect():
-    global game
-    if game.end != None:
-        game = Game()
-        game.commit()
     player_data = game.find_player(current_user.username)
     if player_data != None:
         emit('player_data', player_data)
@@ -91,7 +87,6 @@ def player_enter(data):
     else:
         emit('player_data', player_data)
         socketio.sleep(0)
-        print('Seguimos..')
         if game.full:
             game.deal()
             current_player = {'team': random.choice(['teamA', 'teamB']), 'player': random.choice(['player1', 'player2']), 'n': 1}
@@ -137,10 +132,13 @@ def card_played(data):
             else:
                 teams['teamB']['winner'] = True
                 card_data['winner'] = {'team': 'teamB', 'players': [teams['teamB']['player1']['username'], teams['teamB']['player2']['username']], 'score':[math.floor(teams['teamB']['score']/3), math.floor(teams['teamA']['score']/3)]}
-            emit('game_over', card_data, broadcast=True)
             game.teams = teams
             game.end = datetime.datetime.now()
             game.commit()
+            emit('game_over', card_data, broadcast=True)
+            del teams
+            game = Game()
+
         else:
             game.current_round += 1
             game.current_player = {'team': champ[2], 'player': champ[3], 'username': game.teams[champ[2]][champ[3]]['username'], 'n': 1}
