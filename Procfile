@@ -1,1 +1,1 @@
-web: gunicorn  -k eventlet tresette:app
+web: gunicorn  -k flask_sockets.worker tresette:app
