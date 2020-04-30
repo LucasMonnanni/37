@@ -1,1 +1,1 @@
-web: gunicorn tresette:app
+web: gunicorn  -k eventlet tresette:app
