@@ -1,1 +1,1 @@
-web: gunicorn  -k flask_sockets.worker tresette:app
+web: gunicorn --worker-class socketio.sgunicorn.GeventSocketIOWorker --log-file=- tresette:app
