@@ -1,1 +1,1 @@
-web: gunicorn tresette:tresette
+web: gunicorn tresette:app
