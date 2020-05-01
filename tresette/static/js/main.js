@@ -4,7 +4,7 @@ const templateGame = Handlebars.compile(document.querySelector('#game').innerHTM
 const templateGameOver = Handlebars.compile(document.querySelector('#gameOver').innerHTML);
 var inGame = false;
 var playerData;
-var Data;
+var triunfo = '';
 var hand;
 var epitetos = ['compañero', 'compañera', 'campeón', 'campeona', 'máquina', 'animal', 'loco turbina', 'vieji', 'viejita', 'hermano', 'hermana']
 
@@ -30,10 +30,18 @@ function render_hand(socket, data)  {
         button.id = 'boton'+i
         button.onclick = () => {
             if (playerData.team == data.current_player.team && playerData.player == data.current_player.player)  {
-                document.querySelector('#boton'+i).remove()
-                card_data = {team: playerData.team, player: playerData.player, number: hand[i][0], suit: hand[i][1]}
-                socket.emit('play_card', card_data)
-                hand.splice(i, 1)
+                suits = hand.map(x => {return x[1]})
+                if (hand[i][1]==triunfo || data.current_player.n==1 || !(suits.includes(triunfo)) )    {
+                    for (k=0; k<hand.length; k++)   {
+                        document.querySelector('#boton'+k).onclick = ()=>{}
+                    }
+                    document.querySelector('#boton'+i).remove()
+                    card_data = {team: playerData.team, player: playerData.player, number: hand[i][0], suit: hand[i][1]}
+                    socket.emit('play_card', card_data)
+                    hand.splice(i, 1)
+                } else {
+                    document.querySelector('#turn').innerHTML = "<h2>No te hagás el gil, que tenés " + triunfo + "s</h2>"
+                }
             } else {
                 document.querySelector('#turn').innerHTML = "<h2>Te dije que juega " + data.current_player.username + ", paparule</h2>"
             }
@@ -100,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     socket.on('game_starts', data =>    {
-        Data = data;
         if (inGame) {
             const content = templateGame()
             document.querySelector('#body').innerHTML = content
@@ -110,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     socket.on('card_played', data =>    {
-        Data = data
+        if (data.current_player.n == 2) {triunfo=data.card[1]}
         appendPlayedCard(data)
         render_hand(socket, data)
     })

@@ -14,8 +14,7 @@ def before_first_request_func():
     global value
     value = {'1':3, '2':1, '3':1, '10':1, '9':1, '8':1, '7':0, '6':0, '5':0, '4':0}
     global game
-    game = Game()
-    game.commit()
+    game = None
     global open_round
     open_round = []
     global current_player
@@ -70,6 +69,15 @@ def main():
 
 @socketio.on('connected')
 def connect():
+    global game
+    if game == None:
+        game = Game()
+        game.teams = {'teamA': {'player1': {'username': None, 'hand': []}, \
+                    'player2': {'username': None, 'hand': []}, \
+                    'full': False, 'score': 0, 'winner': False}, \
+          'teamB': {'player1': {'username': None, 'hand': []}, \
+                    'player2': {'username': None, 'hand': []}, \
+                    'full': False, 'score': 0, 'winner': False}}
     player_data = game.find_player(current_user.username)
     if player_data != None:
         emit('player_data', player_data)
@@ -105,7 +113,6 @@ def player_enter(data):
 @socketio.on('player_left')
 def player_left(player_data):
     game.del_player(player_data['team'], player_data['player'])
-    game.commit()
     emit('players_update', game.dump(), broadcast=True)
 
 @socketio.on('play_card')
@@ -129,7 +136,6 @@ def card_played(data):
         teams = game.teams
         teams[champ[2]]['score'] += score
         game.teams = teams
-        game.commit()
         if game.current_round == 10:
             teams = game.teams
             teams[champ[2]]['score'] += 3
@@ -143,17 +149,13 @@ def card_played(data):
             game.end = datetime.datetime.now()
             game.commit()
             emit('game_over', card_data, broadcast=True)
-            del teams
-            game = Game()
-
+            game = None
         else:
             game.current_round += 1
             game.current_player = {'team': champ[2], 'player': champ[3], 'username': game.teams[champ[2]][champ[3]]['username'], 'n': 1}
-            game.commit()
             card_data['current_player'] = game.current_player
             emit('new_round', card_data, broadcast = True)
     else:
         game.next_player()
-        game.commit()
         card_data['current_player'] = game.current_player
         emit('card_played', card_data, broadcast = True)

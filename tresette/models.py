@@ -31,19 +31,12 @@ class User(UserMixin, Document):
 @instance.register
 class Game(Document):
     id = fields.ObjectIdField()
-    teams = fields.DictField(default=\
-    { 'teamA': {'player1': {'username': None, 'hand': []}, \
-                'player2': {'username': None, 'hand': []}, \
-                'full': False, 'score': 0, 'winner': False}, \
-      'teamB': {'player1': {'username': None, 'hand': []}, \
-                'player2': {'username': None, 'hand': []}, \
-                'full': False, 'score': 0, 'winner': False}})
+    teams = fields.DictField()
     current_player = fields.DictField(default={'team': None, 'player': None, 'username':None, 'n': None})
     full = fields.BoolField(default=False)
     start = fields.DateTimeField()
     end = fields.DateTimeField()
     current_round = fields.IntegerField(default=1)
-
 
     def get_players(self):
         players = []
@@ -70,17 +63,14 @@ class Game(Document):
                     teams = self.teams
                     teams[team]['player1']['username'] = username
                     self.teams = teams
-                    self.commit()
                     return {'team': team, 'player': 'player1'}
                 else:
                     teams = self.teams
                     teams[team]['player2']['username'] = username
                     teams[team]['full'] = True
                     self.teams = teams
-                    self.commit()
                     if self.teams['teamA']['full'] and self.teams['teamB']['full']:
                         self.full = True
-                    self.commit()
                     return {'team': team, 'player': 'player2'}
 
     def del_player(self, team, player):
@@ -90,7 +80,6 @@ class Game(Document):
             self.teams[team]['full'] = False
         teams[team]['player2']['username'] = None
         self.teams = teams
-        self.commit()
 
     def deal(self):
         deck = []
@@ -110,7 +99,6 @@ class Game(Document):
                 hand.sort(key=lambda c: c[1])
                 teams[t][p]['hand'] = hand
         self.teams = teams
-        self.commit()
 
     def next_player(self):
         next = {}
