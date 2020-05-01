@@ -15,15 +15,17 @@ function choose(choices) {
 
 function render_hand(socket, data)  {
     if (playerData.team == data.current_player.team && playerData.player == data.current_player.player) {
-        document.querySelector('#turn').innerHTML = "Jugás vos, " + choose(epitetos)
+        document.querySelector('#turn').innerHTML = "<h4>Jugás vos, " + choose(epitetos) + "</h4>"
     } else {
-        document.querySelector('#turn').innerHTML = "Juega " + data.current_player.username
+        document.querySelector('#turn').innerHTML = "<h4>Juega " + data.current_player.username + "</h4>"
     }
     document.querySelector('#hand').innerHTML = ''
     for (let i = 0; i<hand.length; i++ ) {
-        const button = document.createElement("button")
-        button.innerHTML = hand[i][0] + ' de ' + hand[i][1]
+        const button = document.createElement("img")
+        var path = '/static/images/'+hand[i][1]+'/'+hand[i][0]+'.png'
+        button.src = path
         button.class = 'card'
+        button.style.margin = '5px'
         button.style.width = '100px'
         button.id = 'boton'+i
         button.onclick = () => {
@@ -33,11 +35,21 @@ function render_hand(socket, data)  {
                 socket.emit('play_card', card_data)
                 hand.splice(i, 1)
             } else {
-                document.querySelector('#turn').innerHTML = "Te dije que juega " + data.current_player.username + ", paparule"
+                document.querySelector('#turn').innerHTML = "<h2>Te dije que juega " + data.current_player.username + ", paparule</h2>"
             }
         }
         document.querySelector('#hand').appendChild(button)
     }
+}
+
+function appendPlayedCard(data) {
+    const line = document.createElement("img")
+    let path = '/static/images/'+data.card[1]+'/'+data.card[0]+'.png'
+    line.src = path
+    line.title = data.username
+    line.style.margin = '5px'
+    line.style.width = '100px'
+    document.querySelector('#plays').appendChild(line)
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -99,27 +111,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on('card_played', data =>    {
         Data = data
-        const line = document.createElement("p")
-        line.innerHTML = data.username + ' jugó un ' + data.card[0] + ' de ' + data.card[1]
-        document.querySelector('#plays').appendChild(line)
+        appendPlayedCard(data)
         render_hand(socket, data)
     })
 
     socket.on('new_round', data =>    {
         Data = data
-        const line = document.createElement("p")
-        line.innerHTML = data.username + ' jugó un ' + data.card[0] + ' de ' + data.card[1]
-        document.querySelector('#plays').appendChild(line)
+        appendPlayedCard(data)
         setTimeout(() => {
             document.querySelector('#plays').innerHTML = ''
             render_hand(socket, data)
         }, 1000)
     })
+
     socket.on('game_over', data =>    {
         Data = data
-        const line = document.createElement("p")
-        line.innerHTML = data.username + ' jugó un ' + data.card[0] + ' de ' + data.card[1]
-        document.querySelector('#plays').appendChild(line)
+        appendPlayedCard(data)
         if (data.winner.team == playerData.team)    {
             mensaje = 'Bien ahí wache'
         }   else {

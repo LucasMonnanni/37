@@ -75,7 +75,11 @@ def connect():
         emit('player_data', player_data)
         socketio.sleep(0)
     if game.start != None:
-            emit('game_starts', game.dump())
+        emit('game_starts', game.dump())
+        for card in open_round:
+            socketio.sleep(0)
+            card_data = {'username': game.teams[card[2]][card[3]]['username'], 'card': [card[0], card[1]], 'current_player': game.current_player}
+            emit('card_played', card_data)
     else:
             emit('players_update', game.dump())
 
@@ -108,8 +112,11 @@ def player_left(player_data):
 def card_played(data):
     global open_round
     global game
+    teams = game.teams
     open_round.append([data['number'], data['suit'], data['team'], data['player']])
-    card_data = {'username': game.teams[data['team']][data['player']]['username'], 'card': [data['number'], data['suit']]}
+    card_data = {'username': teams[data['team']][data['player']]['username'], 'card': [data['number'], data['suit']]}
+    teams[data['team']][data['player']]['hand'].remove([data['number'], data['suit']])
+    game.teams = teams
     if len(open_round) == 4:
         champ = open_round[0]
         score = value[champ[0]]
