@@ -8,7 +8,7 @@
     </head>
     <body>
         <div class="nav" text-align='right' height=4rem>
-            <b>{{ current_user.username }}</b> <a float='left' align=right href="{{url_for('logout')}}">Salir</a>
+        <a href='{{url_for('user')}}'><b>{{ current_user.username }}</b></a> <a float='right' align=right href="{{url_for('logout')}}">Salir</a>
         </div>
         {% block cuerpo %}
         {% endblock %}

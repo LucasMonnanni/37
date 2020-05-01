@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block head %}
+<!-- <script type="text/javascript" src="{{url_for('static', filename='js/user.js')}}"></script> -->
+{% endblock %}
+{% block cuerpo %}
+<h3>Partidos Jugados: {{data.played}}</h3>
+<h3>Partidos Ganados: {{data.won}}</h3>
+<h3>Partidos Perdidos: {{data.lost}}</h3>
+{% if data.played %}
+    <h4>Detalle de Partidos</h4>
+    <table>
+        <tr>
+            <th colspan='3'>Equipo A</th>
+            <th colspan='3'>Equipo B</th>
+            <th>Fecha</th>
+            <th>Duración</th>
+        </tr>
+    {% for game in data.games%}
+        <tr>
+            {% if game.teams.teamA.winner %}
+                <b>
+                <td>{{game.teams.teamA.player1.username}}</td>
+                <td>{{game.teams.teamA.player2.username}}</td>
+                <td>{{game.teams.teamA.score}}</td>
+                </b>
+                <td>{{game.teams.teamB.score}}</td>
+                <td>{{game.teams.teamB.player2.username}}</td>
+                <td>{{game.teams.teamB.player1.username}}</td>
+            {% else %}
+                <td>{{game.teams.teamA.player1.username}}</td>
+                <td>{{game.teams.teamA.player2.username}}</td>
+                <td>{{game.teams.teamA.score}}</td>
+                <b>
+                <td>{{game.teams.teamB.score}}</td>
+                <td>{{game.teams.teamB.player2.username}}</td>
+                <td>{{game.teams.teamB.player1.username}}</td>
+                </b>
+            {% endif %}
+        <td>{{game.end.date()}}</td>
+        <td>{{game.end - game.start}}</td>
+        </tr>
+    {% endfor %}
+{% endif %}
+{% endblock %}
+</table>

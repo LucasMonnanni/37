@@ -61,6 +61,46 @@ def register():
         return flask.redirect(flask.url_for('login'))
     return flask.render_template('register.html', form=form)
 
+@app.route('/user')
+def user():
+    won = Game.count_documents({
+        '$or': [
+            {'$or': [
+                {'teams.teamA.player1.username':current_user.username},
+                {'teams.teamA.player2.username':current_user.username}
+            ],
+            'teams.teamA.winner':True},
+            {'$or': [
+                {'teams.teamB.player1.username':current_user.username},
+                {'teams.teamB.player2.username':current_user.username}
+            ],
+            'teams.teamB.winner':True}
+        ]
+    })
+    lost = Game.count_documents({
+        '$or': [
+            {'$or': [
+                {'teams.teamA.player1.username':current_user.username},
+                {'teams.teamA.player2.username':current_user.username}
+            ],
+            'teams.teamB.winner':True},
+            {'$or': [
+                {'teams.teamB.player1.username':current_user.username},
+                {'teams.teamB.player2.username':current_user.username}
+            ],
+            'teams.teamA.winner':True}
+        ]
+    })
+    games = Game.find({'$or': [
+        {'teams.teamA.player1.username':current_user.username},
+        {'teams.teamA.player2.username':current_user.username},
+        {'teams.teamB.player1.username':current_user.username},
+        {'teams.teamB.player2.username':current_user.username}
+        ]})
+
+    data = {'played':games.count(), 'won':won, 'lost':lost, 'games': games}
+    return flask.render_template('user.html', data=data)
+
 @app.route('/juego')
 def main():
     if current_user.is_anonymous:
@@ -133,13 +173,16 @@ def card_played(data):
         if game.current_round == 10:
             teams = game.teams
             teams[champ[2]]['score'] += 3
+            teams['teamA']['score'] = math.floor(teams['teamA']['score']/3)
+            teams['teamB']['score'] = math.floor(teams['teamB']['score']/3)
             if teams['teamA']['score']>teams['teamB']['score']:
                 teams['teamA']['winner'] = True
-                card_data['winner'] = {'team': 'teamA', 'players': [teams['teamA']['player1']['username'], teams['teamA']['player2']['username']], 'score':[math.floor(teams['teamA']['score']/3), math.floor(teams['teamB']['score']/3)]}
+                card_data['winner'] = {'team': 'teamA', 'players': [teams['teamA']['player1']['username'], teams['teamA']['player2']['username']], 'score':[teams['teamA']['score'], teams['teamB']['score']]}
             else:
                 teams['teamB']['winner'] = True
-                card_data['winner'] = {'team': 'teamB', 'players': [teams['teamB']['player1']['username'], teams['teamB']['player2']['username']], 'score':[math.floor(teams['teamB']['score']/3), math.floor(teams['teamA']['score']/3)]}
+                card_data['winner'] = {'team': 'teamB', 'players': [teams['teamB']['player1']['username'], teams['teamB']['player2']['username']], 'score':[teams['teamB']['score'], teams['teamA']['score']]}
             game.teams = teams
+            game.current_player = None
             game.end = datetime.datetime.now()
             game.commit()
             emit('game_over', card_data, broadcast=True)
