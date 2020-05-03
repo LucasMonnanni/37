@@ -61,22 +61,26 @@ function appendPlayedCard(data) {
 }
 
 function updateScoreBoard(data) {
-    var row = document.createElement('tr')
-    var s = document.createElement('td')
-    s.innerHTML = data.teams.teamA.hand_score.toString()
-    row.appendChild(s)
-    s = document.createElement('td')
-    s.innerHTML = data.teams.teamB.hand_score.toString()
-    row.appendChild(s)
-    document.querySelector('#scoreBoard').appendChild(row)
-    var total = document.querySelector('#scoreBoardTotal')
-    total.innerHTML = ''
-    s = document.createElement('td')
-    s.innerHTML = data.teams.teamA.score.toString()
-    total.appendChild(s)
-    s = document.createElement('td')
-    s.innerHTML = data.teams.teamB.score.toString()
-    total.appendChild(s)
+    var s
+    if ((data.teams.teamA.hand_score % 3 == 0)&&(data.teams.teamB.hand_score % 3 == 0)) {
+        var row = document.createElement('tr')
+        s = document.createElement('td')
+        s.innerHTML = data.teams.teamA.hand_score.toString()
+        row.appendChild(s)
+        s = document.createElement('td')
+        s.innerHTML = data.teams.teamB.hand_score.toString()
+        row.appendChild(s)
+        document.querySelector('#scoreBoard').appendChild(row)
+    } else {
+        var total = document.querySelector('#scoreBoardTotal')
+        total.innerHTML = ''
+        s = document.createElement('td')
+        s.innerHTML = data.teams.teamA.score.toString()
+        total.appendChild(s)
+        s = document.createElement('td')
+        s.innerHTML = data.teams.teamB.score.toString()
+        total.appendChild(s)
+    }
 }
 
 function playAudio(filename)    {
@@ -176,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     socket.on('new_round', data =>    {
+        triunfo = ''
         appendPlayedCard(data)
         if (playerData.team == data.current_player.team && playerData.player == data.current_player.player) {
             document.querySelector('#turn').innerHTML = "<h5>Ganasteee</h5>"
@@ -203,6 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on('game_over', data =>    {
         appendPlayedCard(data)
+        var mensaje
         mensaje.createElement('b')
         banner = document.createElement('h3')
         if (data.teams[playerData.team].winner == true)    {
