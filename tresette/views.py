@@ -33,7 +33,7 @@ def login():
         if user is None or not check_password_hash(user['password_hash'], form.password.data):
             flask.flash('Si estás registrado, flasheaste, si no, registrate')
             return flask.redirect(flask.url_for('login'))
-        login_user(user, remember= False)
+        login_user(user, remember= True)
         return flask.redirect(flask.url_for('main'))
     return flask.render_template('login.html', form=form)
 

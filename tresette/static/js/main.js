@@ -207,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on('game_over', data =>    {
         appendPlayedCard(data)
-        var mensaje
         mensaje = document.createElement('b')
         banner = document.createElement('h3')
         if (data.teams[playerData.team].winner == true)    {
