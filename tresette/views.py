@@ -175,7 +175,7 @@ def card_played(data):
                 teams['teamA']['hand_score'] = 0
                 teams['teamB']['hand_score'] = 0
                 game.teams = teams
-
+                game.current_round = 1
         else:
             game.current_round += 1
             game.current_player = {'team': champ[2], 'player': champ[3], 'username': game.teams[champ[2]][champ[3]]['username'], 'n': 1}
