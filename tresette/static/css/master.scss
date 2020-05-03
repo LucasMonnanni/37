@@ -1,3 +1,21 @@
 body    {
-    background-color: grey;
+    background-color: #F0F0F0;
+}
+#scoreBoard td,th {
+    text-align: center;
+    font-size: 14;
+    color: #040496;
+
+}
+#chat   {
+    height: 220px;
+}
+#hand  {
+    align-content: center;
+    background-color: #E0E0E0;
+    img {
+        display: inline-block;
+        text-align: center;
+        margin:auto;
+    }
 }

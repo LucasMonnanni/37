@@ -2,14 +2,20 @@
 <html lang="en" dir="ltr">
     <head>
         <meta charset="utf-8">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+        <link rel="stylesheet" href="{{url_for('static', filename='css/master.css')}}">
         <title>TreSette</title>
         {% block head %}
         {% endblock %}
     </head>
     <body>
-        <div class="nav" text-align='right' height=4rem>
-            <b>{{ current_user.username }}</b> <a float='left' align=right href="{{url_for('logout')}}">Salir</a>
-        </div>
+        <nav class="navbar navbar-dark bg-dark">
+            <a class="navbar-brand" href="">
+                <img src="{{url_for('static', filename='images/espada/7.png')}}" height="30" class="d-inline-block align-top" alt="">
+                <strong>{{ current_user.username }}</strong>
+            </a>
+            <a class="nav-item nav-link" href="{{url_for('logout')}}">Salir</a>
+        </nav>
         {% block cuerpo %}
         {% endblock %}
     </body>

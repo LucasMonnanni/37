@@ -32,6 +32,7 @@ class User(UserMixin, Document):
 class Game(Document):
     id = fields.ObjectIdField()
     teams = fields.DictField()
+    first_player = fields.DictField(default={'team': None, 'player': None, 'username':None})
     current_player = fields.DictField(default={'team': None, 'player': None, 'username':None, 'n': None})
     full = fields.BoolField(default=False)
     start = fields.DateTimeField()
@@ -54,7 +55,7 @@ class Game(Document):
 
     def add_player(self, username, team):
         if username in self.players:
-            find_player(self, username)
+            self.find_player(username)
         else:
             if self.full:
                 return None
@@ -112,6 +113,18 @@ class Game(Document):
         next['username'] = self.teams[next['team']][next['player']]['username']
         next['n'] = self.current_player['n']+1
         self.current_player = next
+
+    def next_first_player(self):
+        next = {}
+        l = ['player1', 'player2']
+        if self.first_player['team'] == 'teamA':
+            next['team'] = 'teamB'
+            next['player'] = self.first_player['player']
+        else:
+            next['team'] = 'teamA'
+            next['player'] = l[l.index(self.first_player['player'])-1]
+        next['username'] = self.teams[next['team']][next['player']]['username']
+        self.first_player = next
 
 @login.user_loader
 def load_user(username):

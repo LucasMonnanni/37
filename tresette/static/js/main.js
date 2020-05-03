@@ -1,9 +1,9 @@
 const templateWait = Handlebars.compile(document.querySelector('#waitlist').innerHTML);
 const templateFull = Handlebars.compile(document.querySelector('#gameFull').innerHTML);
 const templateGame = Handlebars.compile(document.querySelector('#game').innerHTML);
-const templateGameOver = Handlebars.compile(document.querySelector('#gameOver').innerHTML);
 var inGame = false;
 var playerData;
+var teamPlayers;
 var triunfo = '';
 var hand;
 var epitetos = ['compañero', 'compañera', 'campeón', 'campeona', 'máquina', 'animal', 'loco turbina', 'vieji', 'viejita', 'hermano', 'hermana']
@@ -25,7 +25,7 @@ function render_hand(socket, data)  {
         var path = '/static/images/'+hand[i][1]+'/'+hand[i][0]+'.png'
         button.src = path
         button.class = 'card'
-        button.style.margin = '5px'
+        button.style.margin = '1px'
         button.style.width = '100px'
         button.id = 'boton'+i
         button.onclick = () => {
@@ -60,14 +60,58 @@ function appendPlayedCard(data) {
     document.querySelector('#plays').appendChild(line)
 }
 
+function updateScoreBoard(data) {
+    var row = document.createElement('tr')
+    var s = document.createElement('td')
+    s.innerHTML = data.teams.teamA.hand_score.toString()
+    row.appendChild(s)
+    s = document.createElement('td')
+    s.innerHTML = data.teams.teamB.hand_score.toString()
+    row.appendChild(s)
+    document.querySelector('#scoreBoard').appendChild(row)
+    var total = document.querySelector('#scoreBoardTotal')
+    total.innerHTML = ''
+    s = document.createElement('td')
+    s.innerHTML = data.teams.teamA.score.toString()
+    total.appendChild(s)
+    s = document.createElement('td')
+    s.innerHTML = data.teams.teamB.score.toString()
+    total.appendChild(s)
+}
+
+function playAudio(filename)    {
+    var audio = new Audio('static/sounds/'+filename);
+    audio.play()
+    audio.onended(()=>{
+        audio.remove()
+    })
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port)
+
+    socket.on('message', data =>    {
+        taunt = parseInt(data.message)
+        if ((taunt!=NaN)&&(taunt<31))   {
+            playAudio(taunt+'.ogg')
+        } else {
+            var c = document.createElement('div')
+            c.class = 'col-6'
+            c.innerHTML = '<p><strong>' + data.username + ': </strong>' + data.message
+            var r = document.createElement('div')
+            r.class = 'row'
+            r.appendChild(c)
+            div = document.querySelector('#chat')
+            div.appendChild(r)
+            div.scrollTop = div.scrollHeight
+        }
+    })
+
     socket.emit('connected')
     socket.on('players_update', data => {
-        Data = data;
-        teamAPlayers = [data.teams.teamA.player1.username, data.teams.teamA.player2.username]
-        teamBPlayers = [data.teams.teamB.player1.username, data.teams.teamB.player2.username]
-        const content = templateWait({teamAPlayers, teamBPlayers})
+        teamPlayers = {teamA:[data.teams.teamA.player1.username, data.teams.teamA.player2.username],
+        teamB: [data.teams.teamB.player1.username, data.teams.teamB.player2.username]}
+        const content = templateWait(teamPlayers)
         document.querySelector('#body').innerHTML = content
         if (inGame) {
             const buttonOut = document.createElement("button")
@@ -76,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 socket.emit('player_left', playerData )
                 inGame = false
             };
-            document.querySelector('#teamB').appendChild(buttonOut)
+            document.querySelector('#teamOut').appendChild(buttonOut)
         } else {
             if (!(data.teams.teamA.full))  {
                 const buttonA = document.createElement("button")
@@ -109,10 +153,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on('game_starts', data =>    {
         if (inGame) {
-            const content = templateGame()
+            teamPlayers = {teamA:[data.teams.teamA.player1.username, data.teams.teamA.player2.username],
+            teamB: [data.teams.teamB.player1.username, data.teams.teamB.player2.username]}
+            const content = templateGame(teamPlayers)
             document.querySelector('#body').innerHTML = content
+            updateScoreBoard(data)
             hand = data.teams[playerData.team][playerData.player].hand
             render_hand(socket, data)
+            document.querySelector("#message").addEventListener("keyup", function(event) {
+                if (event.keyCode === 13) {
+                    socket.emit('message_sent', {message:this.value})
+                    this.value = ''
+                }
+            })
         }
     })
 
@@ -123,25 +176,51 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     socket.on('new_round', data =>    {
-        Data = data
         appendPlayedCard(data)
+        if (playerData.team == data.current_player.team && playerData.player == data.current_player.player) {
+            document.querySelector('#turn').innerHTML = "<h5>Ganasteee</h5>"
+        } else {
+            document.querySelector('#turn').innerHTML = "<h5>Ganó " + data.current_player.username + "</h5>"
+        }
         setTimeout(() => {
             document.querySelector('#plays').innerHTML = ''
             render_hand(socket, data)
-        }, 1000)
+        }, 3000)
+    })
+
+    socket.on('hand_over', data =>    {
+        appendPlayedCard(data)
+
+        setTimeout(() => {
+            if (inGame) {
+                updateScoreBoard(data)
+                document.querySelector('#plays').innerHTML = ''
+                hand = data.teams[playerData.team][playerData.player].hand
+                render_hand(socket, data)
+            }
+        }, 5000)
     })
 
     socket.on('game_over', data =>    {
-        Data = data
         appendPlayedCard(data)
-        if (data.winner.team == playerData.team)    {
-            mensaje = 'Bien ahí wache'
+        mensaje.createElement('b')
+        banner = document.createElement('h3')
+        if (data.teams[playerData.team].winner == true)    {
+            mensaje.innerHTML = 'Bien ahí wache'
+            winners = teamPlayers[data.winner]
+            sound = 'victory.wav'
         }   else {
-            mensaje = 'A veces se gana, a veces se pierde; pero siempre cagoneás'
+            winners = teamPlayers[data.winner]
+            mensaje.innerHTML = 'A veces se gana, a veces se pierde; pero siempre cagoneás'
+            sound = 'defeat.wav'
         }
         setTimeout(() => {
-            const content = templateGameOver({player1: data.winner.players[0],player2: data.winner.players[1],score1: data.winner.score[0],score2: data.winner.score[1],mensaje:mensaje})
-            document.querySelector('#body').innerHTML = content
-        }, 1000)
+            updateScoreBoard(data)
+            banner.innerHTML = '¡Ganaron ' + winners[0] + ' y ' + winners[1] + '!'
+            document.querySelector('#plays').innerHTML = ''
+            document.querySelector('#turn').innerHTML = mensaje
+            document.querySelector('#hand').appendChild(banner)
+            playAudio(sound)
+        }, 5000)
     })
 })

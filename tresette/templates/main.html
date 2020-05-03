@@ -4,51 +4,88 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.11/handlebars.min.js"></script>
     <!-- <script type="text/javascript" src="{{url_for('static', filename='js/main.js')}}"></script> -->
     <script id="waitlist" type="text/x-handlebars-template">
-    <h3>Jugadores:</h3>
-    <div id="teamA">
-        <h4>Equipo A:</h4>
-        <ul>
-        {% raw -%}
-            {{#each teamAPlayers}}
-                <li>{{this}}</li>
-            {{/each}}
-        {%- endraw %}
-        </ul>
-    </div>
-    <div id="teamB">
-        <h4>Equipo B:</h4>
-        <ul>
-        {% raw -%}
-            {{#each teamBPlayers}}
-                <li>{{this}}</li>
-            {{/each}}
-        {%- endraw %}
-        </ul>
-    </div>
+        <div class="container-lg">
+            <div class="row justify-content-start my-5">
+                <div class="col-4">
+                    <h3>Jugadores:</h3>
+                </div>
+            </div>
+            <div class="row justify-content-center my-5">
+                <div id="teamA" class='col-5'>
+                    <h4>Equipo A:</h4>
+                    {% raw -%}
+                        {{#each teamA}}
+                            <p><b>{{this}}</b></p>
+                        {{/each}}
+                    {%- endraw %}
+                </div>
+
+                <div id="teamB" class='col-5'>
+                    <h4>Equipo B:</h4>
+                    {% raw -%}
+                        {{#each teamB}}
+                            <p><b>{{this}}</b></p>
+                        {{/each}}
+                    {%- endraw %}
+                </div>
+            </div>
+            <div class="row justify-content-start my-5">
+                <div class="col-2" id='teamOut'>
+                </div>
+            </div>
+        </div>
    </script>
     <script id='gameFull' type="text/x-handlebars-template">
         <h3>El juego está lleno</h3>
     </script>
     <script id='game' type="text/x-handlebars-template">
-        <h3>Tu mano:</h3>
-        <div id='hand'>
+        <div class="container-xl">
+            {% raw -%}
+            <div class="row my-4">
+                <div class='col text-center' id='hand'>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-3">
+                    <table class='table table-borderless'>
+                        <thead>
+                            <tr>
+                                <th class='text-center' scope="col">{{teamA.[0]}} {{teamA.[1]}}</th>
+                                <th class='text-center' scope="col">{{teamB.[0]}} {{teamB.[1]}}</th>
+                            </tr>
+                        </thead>
+                        <tbody id='scoreBoard'>
+                            <tr class='table-info' id='scoreBoardTotal'>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-6" id='centerCol'>
+                    <div id="turn"></div>
+                    <hr>
+                    <div id='plays'>
+                    </div>
+                </div>
+                <div class="col-3 vh-50">
+                    <div class="container overflow-auto" id='chat'>
+                    </div>
+                    <div class="container m-0 p-0">
+                        <div class="row m-0 p-0">
+                            <div class="col">
+                                <div class="input-group input-group-sm mb-3">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text" id="inputGroup-sizing-sm">Mandá:</span>
+                                    </div>
+                                    <input type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-sm" id='message'>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {%- endraw %}
         </div>
-        <hr>
-        <div id="turn"></div>
-        <hr>
-        <h3>La mesa:</h3>
-        <div id='plays'>
-        </div>
-    </script>
-    <script id='gameOver' type="text/x-handlebars-template">
-    {% raw -%}
-        <h2>Terminose</h2>
-        <h3>Ganaron {{player1}} y {{player2}}</h3>
-        <h3>{{score1}} a {{score2}}</h3>
-        <br><br><p>{{mensaje}}</p>
-        <br><br><br>
-    {%- endraw %}
-        <a href="{{url_for('main')}}">Jugá de nuevo</a>
+
     </script>
     <script type="text/javascript" src="{{url_for('static', filename='js/main.js')}}"></script>
 {% endblock %}

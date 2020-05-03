@@ -1,4 +1,4 @@
-import os, flask, random, datetime, math
+import os, flask, random, datetime
 from flask_socketio import emit
 from wtforms.validators import DataRequired
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -18,12 +18,10 @@ def before_first_request_func():
     global open_round
     open_round = []
     global current_player
+    current_player = {}
     global players_order
     print('Before')
 
-@app.route("/test")
-def gametest():
-    return flask.render_template('gametest.html')
 
 @app.route("/", methods=['GET', 'POST'])
 def login():
@@ -74,10 +72,10 @@ def connect():
         game = Game()
         game.teams = {'teamA': {'player1': {'username': None, 'hand': []}, \
                     'player2': {'username': None, 'hand': []}, \
-                    'full': False, 'score': 0, 'winner': False}, \
+                    'full': False, 'hand_score': 0, 'score': 0, 'winner': False}, \
           'teamB': {'player1': {'username': None, 'hand': []}, \
                     'player2': {'username': None, 'hand': []}, \
-                    'full': False, 'score': 0, 'winner': False}}
+                    'full': False, 'hand_score': 0, 'score': 0, 'winner': False}}
     player_data = game.find_player(current_user.username)
     if player_data != None:
         emit('player_data', player_data)
@@ -91,6 +89,10 @@ def connect():
     else:
             emit('players_update', game.dump())
 
+@socketio.on('message_sent')
+def message(data):
+    emit('message', {'username':current_user.username, 'message': data['message']}, broadcast=True)
+
 @socketio.on('player_enter')
 def player_enter(data):
     player_data = game.add_player(current_user.username, data['team'])
@@ -101,8 +103,10 @@ def player_enter(data):
         socketio.sleep(0)
         if game.full:
             game.deal()
-            current_player = {'team': random.choice(['teamA', 'teamB']), 'player': random.choice(['player1', 'player2']), 'n': 1}
+            current_player = {'team': random.choice(['teamA', 'teamB']), 'player': random.choice(['player1', 'player2'])}
             current_player['username'] = game.teams[current_player['team']][current_player['player']]['username']
+            game.first_player = current_player
+            current_player['n'] = 1
             game.current_player = current_player
             game.start = datetime.datetime.now()
             game.commit()
@@ -124,6 +128,7 @@ def card_played(data):
     card_data = {'username': teams[data['team']][data['player']]['username'], 'card': [data['number'], data['suit']]}
     teams[data['team']][data['player']]['hand'].remove([data['number'], data['suit']])
     game.teams = teams
+    #If it's the end of the round
     if len(open_round) == 4:
         champ = open_round[0]
         score = value[champ[0]]
@@ -134,22 +139,43 @@ def card_played(data):
                 champ = chall
         open_round = []
         teams = game.teams
-        teams[champ[2]]['score'] += score
+        teams[champ[2]]['hand_score'] += score
         game.teams = teams
+        # If it's the end of the hand
         if game.current_round == 10:
             teams = game.teams
-            teams[champ[2]]['score'] += 3
-            if teams['teamA']['score']>teams['teamB']['score']:
-                teams['teamA']['winner'] = True
-                card_data['winner'] = {'team': 'teamA', 'players': [teams['teamA']['player1']['username'], teams['teamA']['player2']['username']], 'score':[math.floor(teams['teamA']['score']/3), math.floor(teams['teamB']['score']/3)]}
+            teams[champ[2]]['hand_score'] += 3
+            teams['teamA']['hand_score'] = teams['teamA']['hand_score'] // 3
+            teams['teamB']['hand_score'] = teams['teamB']['hand_score'] // 3
+            teams['teamA']['score'] += teams['teamA']['hand_score']
+            teams['teamB']['score'] += teams['teamB']['hand_score']
+            # If the game is won
+            if teams['teamA']['score'] != teams['teamB']['score'] and (teams['teamA']['score']>=21 or teams['teamA']['score']>= 21):
+                if teams['teamA']['score']>teams['teamB']['score']:
+                    teams['teamA']['winner'] = True
+                    card_data['winner'] = 'teamA'
+                else:
+                    teams['teamB']['winner'] = True
+                    card_data['winner'] = 'teamB'
+                game.teams = teams
+                game.end = datetime.datetime.now()
+                game.commit()
+                data = game.dump()
+                data.update(card_data)
+                emit('game_over', data, broadcast=True)
+                game = None
             else:
-                teams['teamB']['winner'] = True
-                card_data['winner'] = {'team': 'teamB', 'players': [teams['teamB']['player1']['username'], teams['teamB']['player2']['username']], 'score':[math.floor(teams['teamB']['score']/3), math.floor(teams['teamA']['score']/3)]}
-            game.teams = teams
-            game.end = datetime.datetime.now()
-            game.commit()
-            emit('game_over', card_data, broadcast=True)
-            game = None
+                game.deal()
+                game.next_first_player()
+                current_player = game.first_player
+                current_player['n'] = 1
+                data = game.dump()
+                data.update(card_data)
+                emit('hand_over', data, broadcast=True)
+                teams['teamA']['hand_score'] = 0
+                teams['teamB']['hand_score'] = 0
+                game.teams = teams
+
         else:
             game.current_round += 1
             game.current_player = {'team': champ[2], 'player': champ[3], 'username': game.teams[champ[2]][champ[3]]['username'], 'n': 1}
