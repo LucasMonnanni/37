@@ -169,6 +169,7 @@ def card_played(data):
                 game.next_first_player()
                 current_player = game.first_player
                 current_player['n'] = 1
+                game.current_player = current_player
                 data = game.dump()
                 data.update(card_data)
                 emit('hand_over', data, broadcast=True)

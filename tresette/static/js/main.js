@@ -63,6 +63,7 @@ function appendPlayedCard(data) {
 function updateScoreBoard(data) {
     var s
     if ((data.teams.teamA.hand_score % 3 == 0)&&(data.teams.teamB.hand_score % 3 == 0)) {
+    } else {
         var row = document.createElement('tr')
         s = document.createElement('td')
         s.innerHTML = data.teams.teamA.hand_score.toString()
@@ -71,16 +72,15 @@ function updateScoreBoard(data) {
         s.innerHTML = data.teams.teamB.hand_score.toString()
         row.appendChild(s)
         document.querySelector('#scoreBoard').appendChild(row)
-    } else {
-        var total = document.querySelector('#scoreBoardTotal')
-        total.innerHTML = ''
-        s = document.createElement('td')
-        s.innerHTML = data.teams.teamA.score.toString()
-        total.appendChild(s)
-        s = document.createElement('td')
-        s.innerHTML = data.teams.teamB.score.toString()
-        total.appendChild(s)
     }
+    var total = document.querySelector('#scoreBoardTotal')
+    total.innerHTML = ''
+    s = document.createElement('td')
+    s.innerHTML = data.teams.teamA.score.toString()
+    total.appendChild(s)
+    s = document.createElement('td')
+    s.innerHTML = data.teams.teamB.score.toString()
+    total.appendChild(s)
 }
 
 function playAudio(filename)    {
@@ -195,7 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on('hand_over', data =>    {
         appendPlayedCard(data)
-
         setTimeout(() => {
             if (inGame) {
                 updateScoreBoard(data)
