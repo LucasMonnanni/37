@@ -2,16 +2,64 @@
 {% block head %}
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.11/handlebars.min.js"></script>
-    <!-- <script type="text/javascript" src="{{url_for('static', filename='js/main.js')}}"></script> -->
-    <script id="waitlist" type="text/x-handlebars-template">
+    <link rel="icon" type="image/png" href="{{url_for('static', filename='images/logo.png')}}">
+    <script id="gamelist" type="text/x-handlebars-template">
         <div class="container-lg">
-            <div class="row justify-content-start my-5">
+            <div class="row justify-content-center my-5">
+                <div class="col-4">
+                    <h3>Juegos Abiertos:</h3>
+                </div>
+            </div>
+            <div class="row">
+                <div id='games' class="col-6 offset-3">
+                </div>
+                <div class="col-3">
+                    <div class="container overflow-auto" id='chat'>
+                    </div>
+                    <div class="container m-0 p-0">
+                        <div class="row m-0 p-0">
+                            <div class="col">
+                                <div class="input-group input-group-sm mb-3">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text" id="inputGroup-sizing-sm">Mandá:</span>
+                                    </div>
+                                    <input type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-sm" id='message'>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="container-lg my-4">
+            <div class="row justify-content-center">
+                <div class="col-6">
+                    <div class="input-group input-group-sm mb-3">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="inputGroup-sizing-sm">Creá un juego:</span>
+                        </div>
+                        <select class="custom-select" id="gameTwo" width="7">
+                            <option selected value='false'>4 jugadores</option>
+                            <option value="true">2 jugadores</option>
+                        </select>
+                        <input type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-sm" id='gameName'>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+    <script id="waitlist" type="text/x-handlebars-template">
+        <div class="container-lg game m-4 p-4">
+            <div class="row justify-content-start my-3">
                 <div class="col-4">
                     <h3>Jugadores:</h3>
                 </div>
+                <div class="col-2 ml-auto">
+                    <button type="button" id='leaveGame'>Salir del juego</button>
+                </div>
             </div>
-            <div class="row justify-content-center my-5">
-                <div id="teamA" class='col-5'>
+            <div class="row justify-content-center my-3">
+                <div id="teamA" class='col-4'>
                     <h4>Equipo A:</h4>
                     {% raw -%}
                         {{#each teamA}}
@@ -20,7 +68,7 @@
                     {%- endraw %}
                 </div>
 
-                <div id="teamB" class='col-5'>
+                <div id="teamB" class='col-4'>
                     <h4>Equipo B:</h4>
                     {% raw -%}
                         {{#each teamB}}
@@ -29,20 +77,17 @@
                     {%- endraw %}
                 </div>
             </div>
-            <div class="row justify-content-start my-5">
+            <div class="row justify-content-start">
                 <div class="col-2" id='teamOut'>
                 </div>
             </div>
         </div>
    </script>
-    <script id='gameFull' type="text/x-handlebars-template">
-        <h3>El juego está lleno</h3>
-    </script>
     <script id='game' type="text/x-handlebars-template">
         <div class="container-xl">
             {% raw -%}
             <div class="row my-4">
-                <div class='col text-center' id='hand'>
+                <div class='col text-center game' id='hand'>
                 </div>
             </div>
             <div class="row">

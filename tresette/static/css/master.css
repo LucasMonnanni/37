@@ -14,12 +14,38 @@ body {
 
 #hand {
   align-content: center;
-  background-color: #E0E0E0;
 }
-#hand img {
+@media (max-width: 700px) {
+  #hand img {
+    width: 60px;
+  }
+}
+
+.game {
+  background-color: #2471A3;
+  border-width: 2px;
+  border-radius: 4px;
+  border-style: solid;
+  border-bottom-color: black;
+  border-right-color: darkgray;
+  border-top-color: white;
+  border-left-color: lightgray;
+}
+
+.card {
   display: inline-block;
   text-align: center;
+  background-color: #11ffee00;
   margin: auto;
+  width: 100px;
+}
+
+.full {
+  background-color: #34495E;
+}
+
+button {
+  background-color: #2471A3;
 }
 
 /*# sourceMappingURL=master.css.map */
