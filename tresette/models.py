@@ -213,6 +213,8 @@ class Game(Document):
             next['team'] = next['player']
             next['username'] = self.teams[next['player']]['username']
             self.first_player = next
+            next['n'] = 1
+            self.current_player = next
         else:
             if self.first_player['team'] == 'teamA':
                 next['team'] = 'teamB'
@@ -222,6 +224,7 @@ class Game(Document):
                 next['player'] = l[l.index(self.first_player['player'])-1]
             next['username'] = self.teams[next['team']][next['player']]['username']
             self.first_player = next
+            next['n'] = 1
             self.current_player = next
 
     def get_card(self, data):

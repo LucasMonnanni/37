@@ -177,10 +177,10 @@ def card_played(data):
             game.score_round()
             drawn = game.draw()
             game.current_round += 1
-            game.commit()
             data = game.dump()
             data.update({'card_data':card_data, 'drawn':drawn})
             emit('new_round', data, room = str(game.id))
+            game.commit()
     else:
         game.next_player()
         data = game.dump()
