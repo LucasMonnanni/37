@@ -8,6 +8,12 @@ from tresette import app, socketio
 from tresette.models import *
 from bson.objectid import ObjectId
 
+@app.before_first_request
+def before_first_request():
+    global lobby
+    lobby = []
+    print('before')
+
 @app.route("/", methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -53,29 +59,37 @@ def main():
 @socketio.on('connected')
 def connect():
     join_room('lobby')
+    lobby.append(current_user.username)
     games = Game.find({'end': None})
-    emit('games_update', {'games':[game.dump() for game in games]})
+    emit('games_update', {'games':[game.dump() for game in games], 'lobby': lobby})
+    emit('lobby_update', {'lobby': lobby}, broadcast = True)
+@socketio.on('disconnect')
+def disconnect():
+    if current_user.username in lobby:
+        lobby.remove(current_user.username)
 
 @socketio.on('make_game')
 def make_game(data):
         game = Game()
         game.name = data['name']
-        if data['two']:
+        if data['two']== 'true':
             game.two = True
         game.init_teams()
         game.commit()
         leave_room('lobby')
+        lobby.remove(current_user.username)
         join_room(str(game.id))
         emit('players_update', game.dump())
         socketio.sleep(0)
         games = Game.find({'end': None})
-        emit('games_update', {'games':[game.dump() for game in games]}, room='lobby')
+        emit('games_update', {'games':[game.dump() for game in games], 'lobby':lobby}, room='lobby')
 
 @socketio.on('join_game')
 def join_game(data):
     game = Game.find_one({'id':ObjectId(data['id'])})
     player_data = game.find_player(current_user.username)
     leave_room('lobby')
+    lobby.remove(current_user.username)
     join_room(data['id'])
     if game.start != None:
         if player_data != None:
@@ -94,9 +108,11 @@ def join_game(data):
         else:
             leave_room(data['id'])
             join_room('lobby')
+            lobby.append(current_user.username)
             games = Game.find({'end': None})
             flask.flash('Si estás registrado, flasheaste, si no, registrate')
-            emit('games_update', {'games':[game.dump() for game in games]})
+            emit('games_update', {'games':[game.dump() for game in games], 'lobby':lobby})
+            emit('lobby_update', {'lobby': lobby}, broadcast = True)
     else:
         if player_data != None:
             emit('player_data', player_data)
@@ -107,8 +123,10 @@ def join_game(data):
 def leave_game(data):
     leave_room(data['id'])
     join_room('lobby')
+    lobby.append(current_user.username)
     games = Game.find({'end': None})
-    emit('games_update', {'games':[game.dump() for game in games]})
+    emit('games_update', {'games':[game.dump() for game in games], 'lobby': lobby})
+    emit('lobby_update', {'lobby': lobby}, broadcast = True)
 
 @socketio.on('message_sent')
 def message(data):
@@ -121,8 +139,9 @@ def player_enter(data):
     if player_data == None:
         leave_room(data['id'])
         join_room('lobby')
+        lobby.append(current_user.username)
         games = Game.find({'end': None})
-        emit('games_update', {'games':[game.dump() for game in games]})
+        emit('games_update', {'games':[game.dump() for game in games], 'lobby': lobby})
     else:
         emit('player_data', player_data)
         socketio.sleep(0)

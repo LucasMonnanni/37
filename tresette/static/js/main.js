@@ -186,6 +186,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             document.querySelector('#games').appendChild(r)
         }
+        for (i=0;i<data.lobby.length;i++)   {
+            p = document.createElement('p')
+            p.innerHTML = "<strong>" + data.lobby[i] + "</strong>"
+            document.querySelector("#lobby").appendChild(p)
+        }
         document.querySelector("#gameName").addEventListener("keyup", function(event) {
             if (event.keyCode === 13) {
                 socket.emit('make_game', {name:this.value, two: document.querySelector('#gameTwo').value})
@@ -193,6 +198,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         })
         console.log('games_update')
+    })
+
+    socket.on('lobby_update', data =>   {
+        document.querySelector("#lobby").innerHTML = ''
+        for (i=0;i<data.lobby.length;i++)   {
+            p = document.createElement('p')
+            p.innerHTML = "<strong>" + data.lobby[i] + "</strong>"
+            document.querySelector("#lobby").appendChild(p)
+        }
     })
 
     socket.on('players_update', data => {
