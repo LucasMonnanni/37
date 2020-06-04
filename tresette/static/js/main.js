@@ -102,9 +102,9 @@ function updateScoreBoard(data) {
 function playAudio(filename)    {
     var audio = new Audio('static/sounds/'+filename);
     audio.play()
-    audio.onended(()=>{
+    audio.onended = ()=>{
         audio.remove()
-    })
+    }
 }
 
 function initChat(socket)   {
@@ -115,7 +115,7 @@ function initChat(socket)   {
         }
     })
     socket.on('message', data =>    {
-        taunt = parseInt(data.message)
+        let taunt = parseInt(data.message)
         if ((taunt!=NaN)&&(taunt<31))   {
             playAudio(taunt+'.ogg')
         } else {
@@ -187,9 +187,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('#games').appendChild(r)
         }
         for (i=0;i<data.lobby.length;i++)   {
-            p = document.createElement('p')
-            p.innerHTML = "<strong>" + data.lobby[i] + "</strong>"
-            document.querySelector("#lobby").appendChild(p)
+            r = document.createElement('div')
+            r.classList.add('row')
+            r.innerHTML = "<strong>" + data.lobby[i] + "</strong>"
+            document.querySelector("#lobby").appendChild(r)
         }
         document.querySelector("#gameName").addEventListener("keyup", function(event) {
             if (event.keyCode === 13) {
@@ -203,9 +204,10 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('lobby_update', data =>   {
         document.querySelector("#lobby").innerHTML = ''
         for (i=0;i<data.lobby.length;i++)   {
-            p = document.createElement('p')
-            p.innerHTML = "<strong>" + data.lobby[i] + "</strong>"
-            document.querySelector("#lobby").appendChild(p)
+            r = document.createElement('div')
+            r.classList.add('row')
+            r.innerHTML = "<strong>" + data.lobby[i] + "</strong>"
+            document.querySelector("#lobby").appendChild(r)
         }
     })
 

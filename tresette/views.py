@@ -63,6 +63,7 @@ def connect():
     games = Game.find({'end': None})
     emit('games_update', {'games':[game.dump() for game in games], 'lobby': lobby})
     emit('lobby_update', {'lobby': lobby}, broadcast = True)
+
 @socketio.on('disconnect')
 def disconnect():
     if current_user.username in lobby:
